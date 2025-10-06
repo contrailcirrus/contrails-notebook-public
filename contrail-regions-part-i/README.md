@@ -4,6 +4,9 @@
 
 This repository contains scripts for processing and analyzing [GRUAN](https://www.gruan.org/) radiosonde and waypoint data.
 
+> **⚠️ Warning**
+> This code is for reference only. It likely won't run out of the box.
+
 ## Setup
 
 Requires
@@ -16,3 +19,13 @@ $ pip install "pycontrails[complete]"
 ```
 
 ## Run
+
+> TODO
+
+## Develop
+
+Set up pre-commit hook for code formatting
+
+```
+$ pre-commit install
+```
