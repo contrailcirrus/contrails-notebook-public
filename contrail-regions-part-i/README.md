@@ -7,6 +7,9 @@ This repository contains scripts for processing and analyzing [GRUAN](https://ww
 > **⚠️ Warning**
 > This code is for reference only. It likely won't run out of the box.
 
+## Data
+
+> Data provided by the [Global Climate Observing System Reference Upper-Air Network (GRUAN)](https://www.gruan.org/). See the [GRUAN data policy](https://www.gruan.org/data/data-policy) for more information.
 ## Setup
 
 Requires
@@ -29,3 +32,7 @@ Set up pre-commit hook for code formatting
 ```
 $ pre-commit install
 ```
+
+## Acknowledgement
+
+Data provided by the [Global Climate Observing System Reference Upper-Air Network (GRUAN)](https://www.gruan.org/). See the [GRUAN data policy](https://www.gruan.org/data/data-policy) for more information.
