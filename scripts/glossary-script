@@ -1,6 +1,6 @@
 <script>
 (function () {
-    const GLOSSARY_URL = 'https://contrailcirrus.github.io/contrails-glossary/glossary.json';
+    const GLOSSARY_URL = 'https://raw.githubusercontent.com/contrailcirrus/contrails-glossary/main/glossary.json';
     const CONTENT_SELECTOR = '.gh-content, .post-content';
     const MIN_TERM_LENGTH = 3;
     const MAX_SNIPPET_LENGTH = 260;
