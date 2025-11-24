@@ -1,0 +1,171 @@
+<style>
+/* Glossary term underline styling */
+.gh-content a.glossary-term,
+.post-content a.glossary-term {
+  text-decoration-line: underline;
+  text-decoration-style: dashed;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 2px;
+  text-decoration-color: currentColor;
+  cursor: help;
+  border-bottom: none !important;
+}
+
+/* On hover / focus, make the dashed line slightly darker */
+.gh-content a.glossary-term:hover,
+.gh-content a.glossary-term:focus,
+.post-content a.glossary-term:hover,
+.post-content a.glossary-term:focus {
+  text-decoration-color: rgba(0,0,0,0.6);
+}
+
+/* Global tooltip container (one per page) */
+#glossary-tooltip {
+    position: fixed;
+    max-width: min(480px, 80vw);
+    padding: 0;
+    font-size: 0.9em;
+    line-height: 1.5;
+
+    background: #ffffff;
+    border: 1px solid rgba(0,0,0,0.18);
+    border-radius: 8px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+    color: #222;
+
+    z-index: 99999;
+    opacity: 0;
+    pointer-events: none;       /* 👈 default: doesn't intercept anything */
+    transform: translateY(4px);
+    transition: opacity 0.12s ease-out, transform 0.12s ease-out;
+}
+
+/* Visible state */
+#glossary-tooltip.visible {
+    opacity: 1;
+    transform: translateY(0);
+    pointer-events: auto;       /* 👈 only clickable when visible */
+}
+
+
+/* Base arrow – we’ll override position & borders via classes */
+#glossary-tooltip::after {
+    content: "";
+    position: absolute;
+    left: 16px;
+    border-left: 6px solid transparent;
+    border-right: 6px solid transparent;
+}
+
+/* Tooltip is below the term → arrow on top, pointing up */
+#glossary-tooltip.tooltip-below::after {
+    top: -6px;
+    bottom: auto;
+    border-bottom: 6px solid #ffffff;
+    border-top: none;
+    filter: drop-shadow(0 -1px 1px rgba(0,0,0,0.15));
+}
+
+/* Tooltip is above the term → arrow on bottom, pointing down */
+#glossary-tooltip.tooltip-above::after {
+    bottom: -6px;
+    top: auto;
+    border-top: 6px solid #ffffff;
+    border-bottom: none;
+    filter: drop-shadow(0 1px 1px rgba(0,0,0,0.15));
+}
+
+/* Card layout inside the tooltip */
+#glossary-tooltip .glossary-card {
+    padding: 0.75em 1em;
+    display: flex;
+    flex-direction: column;
+    gap: 0.4em;
+}
+
+.glossary-card-header {
+    display: flex;
+    align-items: baseline;
+    gap: 0.5em;
+}
+
+.glossary-card-title {
+    font-weight: 600;
+    font-size: 0.95em;
+}
+
+.glossary-card-tag {
+    font-size: 0.7em;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    background: #f1f3f5;
+    color: #555;
+    padding: 0.1em 0.4em;
+    border-radius: 999px;
+}
+
+.glossary-card-body {
+    font-size: 0.9em;
+}
+
+/* Footer: primary glossary link + external links list */
+.glossary-card-footer {
+    margin-top: 0.25em;
+    font-size: 0.8em;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25em;
+    color: #555;
+}
+
+.glossary-card-footer-main {
+    margin-bottom: 0.15em;
+}
+
+.glossary-card-footer a {
+    text-decoration: none;
+    color: inherit;
+    border-bottom: 1px solid rgba(0,0,0,0.15);
+}
+
+.glossary-card-footer a:hover {
+    border-bottom-color: rgba(0,0,0,0.4);
+}
+
+/* External links list */
+.glossary-card-extlist {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15em;
+}
+
+/* Simple “icons” for link types */
+.glossary-ref-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3em;
+}
+
+.glossary-ref-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.1em;
+    height: 1.1em;
+    border-radius: 999px;
+    font-size: 0.7em;
+    border: 1px solid rgba(0,0,0,0.2);
+    flex-shrink: 0;
+}
+
+/* Wikipedia-style “W” */
+.glossary-ref-icon-wiki {
+    font-family: serif;
+    font-weight: 600;
+}
+
+/* Generic external link icon */
+.glossary-ref-icon-ext {
+    font-size: 0.8em;
+}
+</style>
