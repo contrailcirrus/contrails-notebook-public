@@ -1,0 +1,363 @@
+<script>
+(function () {
+    const GLOSSARY_URL = 'https://contrailcirrus.github.io/contrails-glossary/glossary.json';
+    const CONTENT_SELECTOR = '.gh-content, .post-content';
+    const MIN_TERM_LENGTH = 3;
+    const MAX_SNIPPET_LENGTH = 260;
+
+    let glossaryMap = null;
+
+    function escapeHTML(str) {
+        return (str || '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+
+    function normaliseReferences(item) {
+        // Preferred: an array of { name, url }
+        let refs = Array.isArray(item.references) ? item.references.slice() : [];
+
+        // Backwards-compatible single reference fields
+        const refUrl =
+            item.reference_url ||
+            item.reference ||
+            item.Reference ||
+            '';
+
+        const refName =
+            item.reference_name ||
+            '';
+
+        if (refUrl && !refs.length) {
+            refs.push({
+                name: refName || 'External site',
+                url: refUrl
+            });
+        }
+
+        // Deduplicate by (name, url)
+        const seen = new Set();
+        refs = refs
+            .filter(r => r && r.url)
+            .map(r => ({
+                name: r.name || r.url,
+                url: r.url
+            }))
+            .filter(r => {
+                const key = `${r.name}::${r.url}`;
+                if (seen.has(key)) return false;
+                seen.add(key);
+                return true;
+            });
+
+        return refs;
+    }
+
+    function isWikipediaUrl(url) {
+        try {
+            return /wikipedia\.org/i.test(url || '');
+        } catch {
+            return false;
+        }
+    }
+
+    async function initGlossary() {
+        const contentRoot = document.querySelector(CONTENT_SELECTOR);
+        if (!contentRoot) return;
+
+        let glossary;
+        try {
+            const res = await fetch(GLOSSARY_URL, { cache: 'no-store' });
+            if (!res.ok) throw new Error('Glossary fetch failed: ' + res.status);
+            glossary = await res.json();
+        } catch (err) {
+            console.error('[Glossary] Unable to load JSON', err);
+            return;
+        }
+
+        const map = {};
+        glossary.forEach(item => {
+            const key = (item.entry || item.Entry || '').trim();
+            if (!key || key.length < MIN_TERM_LENGTH) return;
+
+            const description = item.description || item.Description || '';
+            const category = item.category || item.Category || '';
+
+            const glossaryLink =
+                item.glossary_link ||
+                item.GlossLink ||
+                item.GlossaryLink ||
+                '';
+
+            const clickUrl =
+                glossaryLink ||
+                'https://hub.contrails.org/glossary';
+
+            const references = normaliseReferences(item);
+
+            map[key] = {
+                entry: key,
+                description,
+                category,
+                clickUrl,
+                references
+            };
+        });
+
+        const terms = Object.keys(map).sort((a, b) => b.length - a.length);
+        if (!terms.length) {
+            console.warn('[Glossary] No terms found in glossary JSON');
+            return;
+        }
+
+        glossaryMap = map;
+
+        const escaped = terms.map(t => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+        const regex = new RegExp('\\b(' + escaped.join('|') + ')\\b', 'g');
+
+        walkAndReplace(contentRoot, (text) => {
+            return text.replace(regex, (match) => {
+                const item = map[match];
+                if (!item) return match;
+
+                const desc = (item.description || '').replace(/"/g, '&quot;');
+                const href = item.clickUrl;
+
+                return `<a href="${href}" class="glossary-term" data-description="${desc}" data-entry-key="${match}" target="_blank" rel="noopener noreferrer">${match}</a>`;
+            });
+        });
+
+        setupGlossaryTooltips();
+    }
+
+    function walkAndReplace(root, replacer) {
+        const walker = document.createTreeWalker(
+            root,
+            NodeFilter.SHOW_TEXT,
+            {
+                acceptNode(node) {
+                    if (!node.nodeValue || node.nodeValue.trim() === '') {
+                        return NodeFilter.FILTER_REJECT;
+                    }
+                    if (node.parentElement && (node.parentElement.closest('a') || node.parentElement.closest('.glossary-term'))) {
+                        return NodeFilter.FILTER_REJECT;
+                    }
+                    return NodeFilter.FILTER_ACCEPT;
+                }
+            }
+        );
+
+        const nodes = [];
+        while (walker.nextNode()) {
+            nodes.push(walker.currentNode);
+        }
+
+        nodes.forEach(node => {
+            const original = node.nodeValue;
+            const replaced = replacer(original);
+            if (original !== replaced) {
+                const span = document.createElement('span');
+                span.innerHTML = replaced;
+                node.parentNode.replaceChild(span, node);
+            }
+        });
+    }
+
+    function setupGlossaryTooltips() {
+        const isTouchLike = window.matchMedia('(hover: none), (pointer: coarse)').matches;
+
+        let tooltip = document.getElementById('glossary-tooltip');
+        if (!tooltip) {
+            tooltip = document.createElement('div');
+            tooltip.id = 'glossary-tooltip';
+            document.body.appendChild(tooltip);
+        }
+
+        const terms = document.querySelectorAll('.glossary-term');
+        let hideTimer = null;
+
+        function clearHideTimer() {
+            if (hideTimer !== null) {
+                clearTimeout(hideTimer);
+                hideTimer = null;
+            }
+        }
+
+        function hideTooltipGlobal(e) {
+            tooltip.classList.remove('visible', 'tooltip-above', 'tooltip-below');
+            document
+                .querySelectorAll('.glossary-term[data-tooltip-open="true"]')
+                .forEach(t => t.removeAttribute('data-tooltip-open'));
+
+            // Re-hover underlying term when the tooltip was hiding something underneath
+            if (e && typeof e.clientX === 'number' && typeof e.clientY === 'number') {
+                const el = document.elementFromPoint(e.clientX, e.clientY);
+                const termUnder = el && el.closest && el.closest('.glossary-term');
+                if (termUnder) {
+                    showTooltipForTerm(termUnder);
+                }
+            }
+        }
+
+        function scheduleHide(e) {
+            clearHideTimer();
+            hideTimer = setTimeout(() => {
+                hideTooltipGlobal(e || null);
+            }, 80);
+        }
+
+        function showTooltipForTerm(term) {
+            const key = term.getAttribute('data-entry-key') || term.textContent.trim();
+            const data = glossaryMap && glossaryMap[key];
+            if (!data) return;
+
+            const rawDesc = data.description || '';
+            const snippet = rawDesc.length > MAX_SNIPPET_LENGTH
+                ? rawDesc.slice(0, MAX_SNIPPET_LENGTH).trimEnd() + '…'
+                : rawDesc;
+
+            const title = key;
+            const category = data.category || '';
+            const clickUrl = data.clickUrl;
+            const references = data.references || [];
+
+            const refsHtml = references.length
+                ? `<div class="glossary-card-extlist">
+                        ${references.map(ref => {
+                            const label = escapeHTML(ref.name || 'External site');
+                            const url = ref.url;
+                            const wiki = isWikipediaUrl(url);
+                            const iconClass = wiki ? 'glossary-ref-icon glossary-ref-icon-wiki' : 'glossary-ref-icon glossary-ref-icon-ext';
+                            const iconGlyph = wiki ? 'W' : '↗';
+                            return `
+                                <div class="glossary-ref-link">
+                                    <span class="${iconClass}">${iconGlyph}</span>
+                                    <a href="${url}" target="_blank" rel="noopener noreferrer">${label}</a>
+                                </div>
+                            `;
+                        }).join('')}
+                   </div>`
+                : '';
+
+            tooltip.innerHTML = `
+                <div class="glossary-card">
+                    <div class="glossary-card-header">
+                        <span class="glossary-card-title">${escapeHTML(title)}</span>
+                        ${category ? `<span class="glossary-card-tag">${escapeHTML(category)}</span>` : ''}
+                    </div>
+                    <div class="glossary-card-body">
+                        ${escapeHTML(snippet)}
+                    </div>
+                    <div class="glossary-card-footer">
+                        <div class="glossary-card-footer-main">
+                            <a href="${clickUrl}" target="_blank" rel="noopener noreferrer">Open glossary entry ↗</a>
+                        </div>
+                        ${refsHtml}
+                    </div>
+                </div>
+            `;
+
+            tooltip.classList.add('visible');
+
+            const rect = term.getBoundingClientRect();
+            const tooltipRect = tooltip.getBoundingClientRect();
+
+            let top = rect.bottom + 8;
+            let left = rect.left;
+            const padding = 8;
+            const maxRight = window.innerWidth - padding;
+
+            if (left + tooltipRect.width > maxRight) {
+                left = maxRight - tooltipRect.width;
+            }
+            if (left < padding) {
+                left = padding;
+            }
+
+            let placedAbove = false;
+            if (top + tooltipRect.height > window.innerHeight - padding) {
+                top = rect.top - tooltipRect.height - 10;
+                placedAbove = true;
+            }
+
+            tooltip.style.top = `${top}px`;
+            tooltip.style.left = `${left}px`;
+
+            if (placedAbove) {
+                tooltip.classList.add('tooltip-above');
+                tooltip.classList.remove('tooltip-below');
+            } else {
+                tooltip.classList.add('tooltip-below');
+                tooltip.classList.remove('tooltip-above');
+            }
+        }
+
+        // Desktop / hover behaviour
+        if (!isTouchLike) {
+            terms.forEach(term => {
+                term.addEventListener('mouseenter', () => {
+                    clearHideTimer();
+                    showTooltipForTerm(term);
+                });
+
+                term.addEventListener('mouseleave', () => {
+                    scheduleHide(null);
+                });
+
+                term.addEventListener('focus', () => {
+                    clearHideTimer();
+                    showTooltipForTerm(term);
+                });
+
+                term.addEventListener('blur', () => {
+                    scheduleHide(null);
+                });
+            });
+
+            tooltip.addEventListener('mouseenter', () => {
+                clearHideTimer();
+            });
+
+            tooltip.addEventListener('mouseleave', (e) => {
+                scheduleHide(e);
+            });
+        } else {
+            // Touch-like behaviour: term toggles tooltip; navigation via links inside card
+            terms.forEach(term => {
+                term.addEventListener('click', (e) => {
+                    const isOpen = term.getAttribute('data-tooltip-open') === 'true';
+
+                    e.preventDefault(); // term itself never navigates on touch
+
+                    if (!isOpen) {
+                        document
+                            .querySelectorAll('.glossary-term[data-tooltip-open="true"]')
+                            .forEach(t => t.removeAttribute('data-tooltip-open'));
+
+                        term.setAttribute('data-tooltip-open', 'true');
+                        showTooltipForTerm(term);
+                    } else {
+                        hideTooltipGlobal(null);
+                    }
+                });
+            });
+
+            document.addEventListener('click', (e) => {
+                if (!e.target.closest('.glossary-term') &&
+                    !e.target.closest('#glossary-tooltip')) {
+                    hideTooltipGlobal(null);
+                }
+            });
+        }
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initGlossary);
+    } else {
+        initGlossary();
+    }
+})();
+</script>
