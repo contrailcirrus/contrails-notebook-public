@@ -1,0 +1,60 @@
+
+  /* Remove large bar at the bottom of the homepage  */
+  div.gh-footer-bar {
+    display: none;
+  }
+
+  /* Hide the "Sign In" button in the top right  */
+  a[href="#/portal/signin"] {
+      display: none !important;
+  }
+
+  /* Set navbar links to start from right -> left  */
+  .gh-navigation-menu {
+    flex-direction: row-reverse;
+  }
+
+  /* Add Aeonik font from contrails.org website  */
+  @font-face {
+    font-family: 'Aeonik';
+    src: url('https://storage.googleapis.com/contrails-301217-public-data/website/aeonik-light-0825.woff2')
+      format('woff2');
+    font-weight: 300;
+    font-style: normal;
+    font-display: swap;
+  }
+  
+  @font-face {
+    font-family: 'Aeonik';
+    src: url('https://storage.googleapis.com/contrails-301217-public-data/website/aeonik-regular-0825.woff2')
+      format('woff2');
+    font-weight: 400;
+    font-style: normal;
+    font-display: swap;
+  }
+
+  /* Set header font to Aeonik  */
+  h1, h2, h3, h4, h5 {
+    font-family: 'Aeonik', sans-serif !important;
+    font-weight: 400;
+  }
+
+  /* Set body font to Aeonik */
+  /* 
+  p, a {
+    font-family: 'Aeonik', sans-serif !important;
+    font-weight: 300;
+  } */
+
+  /* For material icon, no longer used  */
+  /* span.material-symbols-outlined {
+    font-size: 15px;
+    margin-right: 3px;
+    margin-bottom: 2px;
+    vertical-align: middle;
+  } */
+
+  /* Remove author image  */
+  .gh-article-author-image {
+    display: none
+  }
