@@ -1,7 +1,5 @@
 .DS_Store
 
-# Jupyter Notebook
+# Python
 .ipynb_checkpoints
-
-# Ruff stuff:
 .ruff_cache/
